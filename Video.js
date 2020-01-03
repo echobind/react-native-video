@@ -239,6 +239,22 @@ export default class Video extends Component {
     return NativeModules.UIManager.getViewManagerConfig(viewManagerName);
   };
 
+  getFrame = (filePath, seconds, width, height) => {
+    return NativeModules.VideoManager.getFrame(filePath, seconds, width, height);
+  }
+
+  getFPS = (filePath) => {
+    return NativeModules.VideoManager.getFPS(filePath);
+  }
+
+  getDimensions = (filePath) => {
+    return NativeModules.VideoManager.getDimensions(filePath);
+  }
+
+  getDuration = (filePath) => {
+    return NativeModules.VideoManager.getDuration(filePath);
+  }
+
   render() {
     const resizeMode = this.props.resizeMode;
     const source = resolveAssetSource(this.props.source) || {};

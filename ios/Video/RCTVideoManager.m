@@ -82,6 +82,96 @@ RCT_REMAP_METHOD(save,
 }
 RCT_EXPORT_VIEW_PROPERTY(onPictureInPictureStatusChanged, RCTDirectEventBlock);
 RCT_EXPORT_VIEW_PROPERTY(onRestoreUserInterfaceForPictureInPictureStop, RCTDirectEventBlock);
+RCT_EXPORT_METHOD(getDimensions:(NSString *)filepath resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
+{
+    @try {
+        filepath = [filepath stringByReplacingOccurrencesOfString:@"file://" withString:@""];
+        NSURL *videoURL = [NSURL fileURLWithPath:filepath];
+
+        AVURLAsset *asset = [[AVURLAsset alloc] initWithURL:videoURL options:nil];
+        AVAssetTrack * videoAssetTrack = [asset tracksWithMediaType: AVMediaTypeVideo].firstObject;
+
+        resolve(@{
+            @"width": [NSNumber numberWithFloat: videoAssetTrack.naturalSize.width],
+            @"height": [NSNumber numberWithFloat: videoAssetTrack.naturalSize.height],
+        });
+    } @catch(NSException *e) {
+        reject(e.reason, nil, nil);
+    }
+}
+RCT_EXPORT_METHOD(getFPS:(NSString *)filepath resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
+{
+    @try {
+        filepath = [filepath stringByReplacingOccurrencesOfString:@"file://" withString:@""];
+        NSURL *videoURL = [NSURL fileURLWithPath:filepath];
+
+        AVURLAsset *asset = [[AVURLAsset alloc] initWithURL:videoURL options:nil];
+        AVAssetTrack * videoAssetTrack = [asset tracksWithMediaType: AVMediaTypeVideo].firstObject;
+
+        resolve([NSNumber numberWithFloat: videoAssetTrack.nominalFrameRate]);
+    } @catch(NSException *e) {
+        reject(e.reason, nil, nil);
+    }
+}
+RCT_EXPORT_METHOD(getDuration:(NSString *)filepath resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
+{
+    @try {
+        filepath = [filepath stringByReplacingOccurrencesOfString:@"file://" withString:@""];
+        NSURL *videoURL = [NSURL fileURLWithPath:filepath];
+
+        AVURLAsset *asset = [[AVURLAsset alloc] initWithURL:videoURL options:nil];
+        AVAssetTrack * videoAssetTrack = [asset tracksWithMediaType: AVMediaTypeVideo].firstObject;
+
+        resolve([NSNumber numberWithFloat: CMTimeGetSeconds(videoAssetTrack.timeRange.duration)]);
+    } @catch(NSException *e) {
+        reject(e.reason, nil, nil);
+    }
+}
+RCT_EXPORT_METHOD(getFrame:(NSString *)filepath seconds:(float)seconds width:(int)width height:(int)height resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
+{
+    @try {
+        filepath = [filepath stringByReplacingOccurrencesOfString:@"file://" withString:@""];
+        NSURL *videoURL = [NSURL fileURLWithPath:filepath];
+        
+        AVURLAsset *asset = [[AVURLAsset alloc] initWithURL:videoURL options:nil];
+        AVAssetImageGenerator *generator = [[AVAssetImageGenerator alloc] initWithAsset:asset];
+        generator.appliesPreferredTrackTransform = YES;
+
+        // **maximumSize** // 
+        // This option allows us to specify the return image size
+        generator.maximumSize = CGSizeMake(width, height);
+
+        // **requestedTimeTolerance** //
+        // These options at zero ensures the highest degree of accuracy in capturing the frame at the requested time.
+        // without these options the frame returned for the requested time code could be off by greater than 1 second, or at 30ps, 30 frames
+        generator.requestedTimeToleranceBefore = kCMTimeZero;
+        generator.requestedTimeToleranceAfter = kCMTimeZero;
+
+        NSError *err = NULL;
+
+        // We must generate a time code witht he Core Media class CMTimeMakeWithSeconds
+        // The timescale derived from the asset.duration is equivelant to an FPS value in a different format.
+        CMTime time = CMTimeMakeWithSeconds(seconds, asset.duration.timescale);
+            
+        CGImageRef imgRef = [generator copyCGImageAtTime:time actualTime:NULL error:&err];
+        UIImage *thumbnail = [UIImage imageWithCGImage:imgRef];
+        
+        NSString* tempDirectory = [NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES) lastObject];
+        
+        NSData *data = UIImageJPEGRepresentation(thumbnail, 1.0);
+        NSFileManager *fileManager = [NSFileManager defaultManager];
+        NSString *guid = [[NSUUID new] UUIDString];
+        NSString *fullPath = [tempDirectory stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.jpg", guid] ];
+        
+        [fileManager createFileAtPath:fullPath contents:data attributes:nil];
+        
+        CGImageRelease(imgRef);
+
+        resolve(fullPath);
+    } @catch(NSException *e) {
+        reject(e.reason, nil, nil);
+    }
+}
 
 - (NSDictionary *)constantsToExport
 {
