@@ -243,6 +243,10 @@ export default class Video extends Component {
     return NativeModules.VideoManager.getFrame(filePath, seconds, width, height);
   }
 
+  getFrames = (filePath) => {
+    return NativeModules.VideoManager.getFrames(filePath);
+  }
+
   getFPS = (filePath) => {
     return NativeModules.VideoManager.getFPS(filePath);
   }

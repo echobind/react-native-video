@@ -173,6 +173,66 @@ RCT_EXPORT_METHOD(getFrame:(NSString *)filepath seconds:(float)seconds width:(in
     }
 }
 
+RCT_EXPORT_METHOD(getFrames:(NSString *)filepath resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
+{
+    @try {
+        filepath = [filepath stringByReplacingOccurrencesOfString:@"file://" withString:@""];
+        NSURL *videoURL = [NSURL fileURLWithPath:filepath];
+        
+        AVURLAsset *asset = [[AVURLAsset alloc] initWithURL:videoURL options:nil];
+        AVAssetImageGenerator *generator = [[AVAssetImageGenerator alloc] initWithAsset:asset];
+        AVAssetTrack * videoAssetTrack = [asset tracksWithMediaType: AVMediaTypeVideo].firstObject;
+
+        generator.appliesPreferredTrackTransform = YES;
+        generator.maximumSize = CGSizeMake(1280, 720);
+        generator.requestedTimeToleranceBefore = kCMTimeZero;
+        generator.requestedTimeToleranceAfter = kCMTimeZero;
+
+        
+        float fps = videoAssetTrack.nominalFrameRate;
+        int duration = CMTimeGetSeconds(videoAssetTrack.timeRange.duration);
+        int totalFrameCount = round(duration * fps);
+        
+        __block NSMutableArray *images = [[NSMutableArray alloc]initWithCapacity:duration * fps];
+        NSMutableArray* times = [[NSMutableArray alloc]initWithCapacity:duration * fps];
+        
+        for(Float64 i = 0; i < duration * fps; i++)
+        {
+            [times addObject: [NSValue valueWithCMTime:CMTimeMakeWithSeconds(i / fps, asset.duration.timescale)]];
+        }
+
+        NSLog(@"The content of times is%@", times);
+
+        NSFileManager *fileManager = [NSFileManager defaultManager];
+        NSString* tempDirectory = [NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES) lastObject];
+    
+        __block unsigned int i = 0;
+        [generator generateCGImagesAsynchronouslyForTimes:times completionHandler:^(CMTime requestedTime, CGImageRef image, CMTime actualTime, AVAssetImageGeneratorResult result, NSError *error) {
+            i = i + 1;
+            if (result == AVAssetImageGeneratorSucceeded) {
+                UIImage* thumbnail = [[UIImage alloc] initWithCGImage:image scale:UIViewContentModeScaleAspectFit orientation:UIImageOrientationUp];
+                
+                NSData *data = UIImageJPEGRepresentation(thumbnail, 1.0);
+                NSString *guid = [[NSUUID new] UUIDString];
+                NSString *imagePath = [tempDirectory stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.jpg", guid] ];
+                
+                [fileManager createFileAtPath:imagePath contents:data attributes:nil];
+                
+                [images addObject:imagePath];
+            }
+
+            if (i == totalFrameCount) {
+                resolve(images);
+            }
+        }];
+        
+
+    } @catch(NSException *e) {
+        reject(e.reason, nil, nil);
+    }
+    
+}
+
 - (NSDictionary *)constantsToExport
 {
   return @{
