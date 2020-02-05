@@ -149,7 +149,7 @@ RCT_EXPORT_METHOD(getFrame:(NSString *)filepath seconds:(float)seconds width:(in
 
         NSError *err = NULL;
 
-        // We must generate a time code witht he Core Media class CMTimeMakeWithSeconds
+        // We must generate a time code with the Core Media class CMTimeMakeWithSeconds
         // The timescale derived from the asset.duration is equivelant to an FPS value in a different format.
         CMTime time = CMTimeMakeWithSeconds(seconds, asset.duration.timescale);
             
@@ -184,7 +184,7 @@ RCT_EXPORT_METHOD(getFrames:(NSString *)filepath resolve:(RCTPromiseResolveBlock
         AVAssetTrack * videoAssetTrack = [asset tracksWithMediaType: AVMediaTypeVideo].firstObject;
 
         generator.appliesPreferredTrackTransform = YES;
-        generator.maximumSize = CGSizeMake(1280, 720);
+        generator.maximumSize = CGSizeMake(videoAssetTrack.naturalSize.width, videoAssetTrack.naturalSize.height);
         generator.requestedTimeToleranceBefore = kCMTimeZero;
         generator.requestedTimeToleranceAfter = kCMTimeZero;
 
@@ -201,8 +201,6 @@ RCT_EXPORT_METHOD(getFrames:(NSString *)filepath resolve:(RCTPromiseResolveBlock
             [times addObject: [NSValue valueWithCMTime:CMTimeMakeWithSeconds(i / fps, asset.duration.timescale)]];
         }
 
-        NSLog(@"The content of times is%@", times);
-
         NSFileManager *fileManager = [NSFileManager defaultManager];
         NSString* tempDirectory = [NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES) lastObject];
     
@@ -212,7 +210,7 @@ RCT_EXPORT_METHOD(getFrames:(NSString *)filepath resolve:(RCTPromiseResolveBlock
             if (result == AVAssetImageGeneratorSucceeded) {
                 UIImage* thumbnail = [[UIImage alloc] initWithCGImage:image scale:UIViewContentModeScaleAspectFit orientation:UIImageOrientationUp];
                 
-                NSData *data = UIImageJPEGRepresentation(thumbnail, 1.0);
+                NSData *data = UIImageJPEGRepresentation(thumbnail, 1);  
                 NSString *guid = [[NSUUID new] UUIDString];
                 NSString *imagePath = [tempDirectory stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.jpg", guid] ];
                 
